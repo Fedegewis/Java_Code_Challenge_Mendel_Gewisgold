@@ -1,28 +1,22 @@
 package com.challenge.mendel.dto;
 
-public class CreateTransactionRequest {
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-    private Long id;
+public class UpdateTransactionRequest {
+
     private Double amount;
     private String type;
+
+    @JsonProperty("parent_id")
     private Long parentId;
 
-    public CreateTransactionRequest() {
+    public UpdateTransactionRequest() {
     }
 
-    public CreateTransactionRequest(Long id, Double amount, String type, Long parentId) {
-        this.id = id;
+    public UpdateTransactionRequest(Double amount, String type, Long parentId) {
         this.amount = amount;
         this.type = type;
         this.parentId = parentId;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
     }
 
     public Double getAmount() {

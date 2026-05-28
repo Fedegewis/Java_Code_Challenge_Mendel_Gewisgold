@@ -1,11 +1,14 @@
 package com.challenge.mendel.repository;
 
 import com.challenge.mendel.domain.Transaction;
+import org.springframework.stereotype.Repository;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Repository
 public class InMemoryTransactionRepository implements TransactionRepository {
 
     private final Map<Long, Transaction> transactions = new ConcurrentHashMap<>();

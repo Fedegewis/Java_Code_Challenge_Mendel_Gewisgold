@@ -12,10 +12,16 @@ import java.util.concurrent.ConcurrentHashMap;
 public class InMemoryTransactionRepository implements TransactionRepository {
 
     private final Map<Long, Transaction> transactions = new ConcurrentHashMap<>();
+    private final Map<String, List<Transaction>> transactionsByType = new ConcurrentHashMap<>();
 
     @Override
     public void save(Transaction transaction) {
+        if (transactions.containsKey(transaction.getId())) {
+            Transaction existing = transactions.get(transaction.getId());
+            removeFromTypeIndex(existing);
+        }
         transactions.put(transaction.getId(), transaction);
+        addToTypeIndex(transaction);
     }
 
     @Override
@@ -37,5 +43,26 @@ public class InMemoryTransactionRepository implements TransactionRepository {
             return false;
         }
         return transactions.containsKey(id);
+    }
+
+    @Override
+    public List<Transaction> findByType(String type) {
+        if (type == null || type.isBlank()) {
+            return new ArrayList<>();
+        }
+        List<Transaction> result = transactionsByType.get(type);
+        return result != null ? new ArrayList<>(result) : new ArrayList<>();
+    }
+
+    private void addToTypeIndex(Transaction transaction) {
+        transactionsByType.computeIfAbsent(transaction.getType(), k -> new ArrayList<>())
+                .add(transaction);
+    }
+
+    private void removeFromTypeIndex(Transaction transaction) {
+        List<Transaction> list = transactionsByType.get(transaction.getType());
+        if (list != null) {
+            list.remove(transaction);
+        }
     }
 }

@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import java.util.List;
+
 @ExtendWith(MockitoExtension.class)
 class TransactionServiceImplTest {
 
@@ -179,6 +181,77 @@ class TransactionServiceImplTest {
 
             verify(repository, never()).existsById(any());
             verify(repository).save(any(Transaction.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("getTransactionIdsByType() - Happy Path Tests")
+    class GetTransactionIdsByTypeHappyPathTests {
+
+        @Test
+        @DisplayName("should return transaction ids matching the given type")
+        void getTransactionIdsByType_ExistingType_ReturnsIds() {
+            Transaction t1 = new Transaction(10L, 100.0, "cars", null);
+            Transaction t2 = new Transaction(12L, 200.0, "cars", null);
+            when(repository.findByType("cars")).thenReturn(List.of(t1, t2));
+
+            List<Long> result = service.getTransactionIdsByType("cars");
+
+            assertEquals(List.of(10L, 12L), result);
+        }
+
+        @Test
+        @DisplayName("should return empty list when no transactions match type")
+        void getTransactionIdsByType_NoMatch_ReturnsEmptyList() {
+            when(repository.findByType("unknown")).thenReturn(List.of());
+
+            List<Long> result = service.getTransactionIdsByType("unknown");
+
+            assertTrue(result.isEmpty());
+        }
+
+        @Test
+        @DisplayName("should return single id when only one transaction matches type")
+        void getTransactionIdsByType_SingleMatch_ReturnsSingleId() {
+            Transaction t1 = new Transaction(5L, 100.0, "shopping", null);
+            when(repository.findByType("shopping")).thenReturn(List.of(t1));
+
+            List<Long> result = service.getTransactionIdsByType("shopping");
+
+            assertEquals(List.of(5L), result);
+        }
+    }
+
+    @Nested
+    @DisplayName("getTransactionIdsByType() - Edge Case Tests")
+    class GetTransactionIdsByTypeEdgeCaseTests {
+
+        @Test
+        @DisplayName("should return empty list for null type")
+        void getTransactionIdsByType_NullType_ReturnsEmptyList() {
+            List<Long> result = service.getTransactionIdsByType(null);
+
+            assertTrue(result.isEmpty());
+            verify(repository, never()).findByType(any());
+        }
+
+        @Test
+        @DisplayName("should return empty list for blank type")
+        void getTransactionIdsByType_BlankType_ReturnsEmptyList() {
+            List<Long> result = service.getTransactionIdsByType("   ");
+
+            assertTrue(result.isEmpty());
+            verify(repository, never()).findByType(any());
+        }
+
+        @Test
+        @DisplayName("should return empty list when repository returns null")
+        void getTransactionIdsByType_NullFromRepository_ReturnsEmptyList() {
+            when(repository.findByType("test")).thenReturn(null);
+
+            List<Long> result = service.getTransactionIdsByType("test");
+
+            assertTrue(result.isEmpty());
         }
     }
 }

@@ -7,6 +7,9 @@ import com.challenge.mendel.exception.ValidationException;
 import com.challenge.mendel.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 public class TransactionServiceImpl implements TransactionService {
 
@@ -51,5 +54,19 @@ public class TransactionServiceImpl implements TransactionService {
         if (request.getType() == null || request.getType().isBlank()) {
             throw new ValidationException("Type is required");
         }
+    }
+
+    @Override
+    public List<Long> getTransactionIdsByType(String type) {
+        if (type == null || type.isBlank()) {
+            return List.of();
+        }
+        List<Transaction> transactions = repository.findByType(type);
+        if (transactions == null) {
+            return List.of();
+        }
+        return transactions.stream()
+                .map(Transaction::getId)
+                .collect(Collectors.toList());
     }
 }

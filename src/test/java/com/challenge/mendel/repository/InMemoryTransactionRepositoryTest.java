@@ -190,4 +190,103 @@ class InMemoryTransactionRepositoryTest {
             assertFalse(exists);
         }
     }
+
+    @Nested
+    @DisplayName("findByType() tests")
+    class FindByTypeTests {
+
+        @Test
+        @DisplayName("should return empty list when no transactions of type exist")
+        void findByType_NoTransactionsOfType_ReturnsEmptyList() {
+            repository.save(new Transaction(1L, 100.0, "CREDIT", null));
+
+            List<Transaction> result = repository.findByType("DEBIT");
+
+            assertNotNull(result);
+            assertTrue(result.isEmpty());
+        }
+
+        @Test
+        @DisplayName("should return transactions matching the given type")
+        void findByType_ExistingType_ReturnsMatchingTransactions() {
+            repository.save(new Transaction(1L, 100.0, "CREDIT", null));
+            repository.save(new Transaction(2L, 200.0, "DEBIT", null));
+            repository.save(new Transaction(3L, 300.0, "CREDIT", 1L));
+
+            List<Transaction> result = repository.findByType("CREDIT");
+
+            assertEquals(2, result.size());
+        }
+
+        @Test
+        @DisplayName("should return empty list when repository is empty")
+        void findByType_EmptyRepository_ReturnsEmptyList() {
+            List<Transaction> result = repository.findByType("CREDIT");
+
+            assertNotNull(result);
+            assertTrue(result.isEmpty());
+        }
+
+        @Test
+        @DisplayName("should return empty list for null type")
+        void findByType_NullType_ReturnsEmptyList() {
+            repository.save(new Transaction(1L, 100.0, "CREDIT", null));
+
+            List<Transaction> result = repository.findByType(null);
+
+            assertNotNull(result);
+            assertTrue(result.isEmpty());
+        }
+
+        @Test
+        @DisplayName("should return empty list for blank type")
+        void findByType_BlankType_ReturnsEmptyList() {
+            repository.save(new Transaction(1L, 100.0, "CREDIT", null));
+
+            List<Transaction> result = repository.findByType("   ");
+
+            assertNotNull(result);
+            assertTrue(result.isEmpty());
+        }
+
+        @Test
+        @DisplayName("should not return modified original list when updating")
+        void findByType_ReturnsNewListInstance() {
+            repository.save(new Transaction(1L, 100.0, "CREDIT", null));
+
+            List<Transaction> result1 = repository.findByType("CREDIT");
+            List<Transaction> result2 = repository.findByType("CREDIT");
+
+            assertNotSame(result1, result2);
+        }
+
+        @Test
+        @DisplayName("should update index when transaction type changes")
+        void findByType_TransactionTypeChanged_ReturnsUpdatedList() {
+            repository.save(new Transaction(1L, 100.0, "CREDIT", null));
+
+            repository.save(new Transaction(1L, 100.0, "DEBIT", null));
+
+            List<Transaction> creditResult = repository.findByType("CREDIT");
+            List<Transaction> debitResult = repository.findByType("DEBIT");
+
+            assertTrue(creditResult.isEmpty());
+            assertEquals(1, debitResult.size());
+        }
+
+        @Test
+        @DisplayName("should remove transaction from type index when deleted (overwritten)")
+        void findByType_TransactionOverwritten_RemovedFromOldTypeIndex() {
+            repository.save(new Transaction(1L, 100.0, "CREDIT", null));
+            repository.save(new Transaction(2L, 200.0, "DEBIT", null));
+
+            repository.save(new Transaction(1L, 150.0, "DEBIT", null));
+
+            List<Transaction> creditResult = repository.findByType("CREDIT");
+            List<Transaction> debitResult = repository.findByType("DEBIT");
+
+            assertTrue(creditResult.isEmpty());
+            assertEquals(2, debitResult.size());
+        }
+    }
 }

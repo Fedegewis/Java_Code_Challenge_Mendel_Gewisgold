@@ -35,7 +35,7 @@ class TransactionControllerIntegrationTest {
 
         @BeforeEach
         void setUp() {
-            transactionRepository.findAll().forEach(t -> transactionRepository.save(t));
+            transactionRepository.clear();
         }
 
         @Test
@@ -148,6 +148,94 @@ class TransactionControllerIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(malformedJson))
                     .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /transactions/types/{type} - Integration Tests")
+    class GetTransactionsByTypeIntegrationTests {
+
+        @BeforeEach
+        void setUp() {
+            transactionRepository.clear();
+        }
+
+        @Test
+        void getTransactionsByType_ReturnsCorrectIds() throws Exception {
+            transactionService.upsertTransaction(1L, new UpdateTransactionRequest(100.0, "cars", null));
+            transactionService.upsertTransaction(2L, new UpdateTransactionRequest(200.0, "cars", null));
+            transactionService.upsertTransaction(3L, new UpdateTransactionRequest(300.0, "shopping", null));
+
+            mockMvc.perform(get("/transactions/types/cars"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0]").value(1))
+                    .andExpect(jsonPath("$[1]").value(2));
+        }
+
+        @Test
+        void getTransactionsByType_NoMatch_ReturnsEmptyArray() throws Exception {
+            transactionService.upsertTransaction(1L, new UpdateTransactionRequest(100.0, "cars", null));
+
+            mockMvc.perform(get("/transactions/types/unknown"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$").isArray())
+                    .andExpect(jsonPath("$").isEmpty());
+        }
+
+        @Test
+        void getTransactionsByType_BlankType_ReturnsEmptyArray() throws Exception {
+            transactionService.upsertTransaction(1L, new UpdateTransactionRequest(100.0, "cars", null));
+
+            mockMvc.perform(get("/transactions/types/%20%20"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$").isArray())
+                    .andExpect(jsonPath("$").isEmpty());
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /transactions/sum/{transactionId} - Integration Tests")
+    class GetTransactionSumIntegrationTests {
+
+        @BeforeEach
+        void setUp() {
+            transactionRepository.clear();
+        }
+
+        @Test
+        void getTransactionSum_ValidTransaction_ReturnsCorrectSum() throws Exception {
+            transactionService.upsertTransaction(1L, new UpdateTransactionRequest(5000.0, "cars", null));
+
+            mockMvc.perform(get("/transactions/sum/1"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.sum").value(5000.0));
+        }
+
+        @Test
+        void getTransactionSum_WithTransitiveChildren_ReturnsCorrectSum() throws Exception {
+            transactionService.upsertTransaction(1L, new UpdateTransactionRequest(5000.0, "cars", null));
+            transactionService.upsertTransaction(2L, new UpdateTransactionRequest(3000.0, "debit", 1L));
+            transactionService.upsertTransaction(3L, new UpdateTransactionRequest(2000.0, "debit", 2L));
+
+            mockMvc.perform(get("/transactions/sum/1"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.sum").value(10000.0));
+        }
+
+        @Test
+        void getTransactionSum_MissingTransaction_ReturnsNotFound() throws Exception {
+            mockMvc.perform(get("/transactions/sum/999"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message").value("Transaction with id 999 not found"));
+        }
+
+        @Test
+        void getTransactionSum_TransactionWithNoChildren_ReturnsOnlyAmount() throws Exception {
+            transactionService.upsertTransaction(10L, new UpdateTransactionRequest(7500.0, "shopping", null));
+
+            mockMvc.perform(get("/transactions/sum/10"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.sum").value(7500.0));
         }
     }
 }

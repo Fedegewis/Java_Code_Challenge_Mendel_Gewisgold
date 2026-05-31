@@ -16,4 +16,6 @@ public interface TransactionRepository {
     List<Transaction> findByType(String type);
 
     List<Long> findChildrenIdsByParentId(Long parentId);
+
+    void clear();
 }

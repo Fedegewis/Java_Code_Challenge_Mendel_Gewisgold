@@ -93,4 +93,11 @@ public class InMemoryTransactionRepository implements TransactionRepository {
             }
         }
     }
+
+    @Override
+    public void clear() {
+        transactions.clear();
+        transactionsByType.clear();
+        parentToChildren.clear();
+    }
 }

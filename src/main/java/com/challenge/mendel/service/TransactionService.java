@@ -10,4 +10,6 @@ public interface TransactionService {
     List<Long> getTransactionIdsByType(String type);
 
     List<Long> getChildrenIdsByParentId(Long parentId);
+
+    Double getTransactionSum(Long transactionId);
 }

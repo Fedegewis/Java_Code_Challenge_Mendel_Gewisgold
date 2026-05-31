@@ -23,4 +23,11 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .body(Map.of("error", ex.getMessage()));
     }
+
+    @ExceptionHandler(TransactionNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleTransactionNotFound(TransactionNotFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", ex.getMessage()));
+    }
 }

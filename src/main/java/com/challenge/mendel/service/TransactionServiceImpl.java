@@ -3,6 +3,7 @@ package com.challenge.mendel.service;
 import com.challenge.mendel.domain.Transaction;
 import com.challenge.mendel.dto.UpdateTransactionRequest;
 import com.challenge.mendel.exception.ParentTransactionNotFoundException;
+import com.challenge.mendel.exception.TransactionNotFoundException;
 import com.challenge.mendel.exception.ValidationException;
 import com.challenge.mendel.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
@@ -76,5 +77,33 @@ public class TransactionServiceImpl implements TransactionService {
             return List.of();
         }
         return repository.findChildrenIdsByParentId(parentId);
+    }
+
+    @Override
+    public Double getTransactionSum(Long transactionId) {
+        if (transactionId == null) {
+            throw new ValidationException("Transaction ID is required");
+        }
+
+        Transaction transaction = repository.findById(transactionId);
+        if (transaction == null) {
+            throw new TransactionNotFoundException(transactionId);
+        }
+
+        return calculateSum(transaction);
+    }
+
+    private Double calculateSum(Transaction transaction) {
+        Double sum = transaction.getAmount();
+
+        List<Long> childrenIds = repository.findChildrenIdsByParentId(transaction.getId());
+        for (Long childId : childrenIds) {
+            Transaction child = repository.findById(childId);
+            if (child != null) {
+                sum += calculateSum(child);
+            }
+        }
+
+        return sum;
     }
 }

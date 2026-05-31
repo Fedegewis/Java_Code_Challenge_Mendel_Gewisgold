@@ -3,6 +3,7 @@ package com.challenge.mendel.controller;
 import com.challenge.mendel.dto.UpdateTransactionRequest;
 import com.challenge.mendel.exception.GlobalExceptionHandler;
 import com.challenge.mendel.exception.ParentTransactionNotFoundException;
+import com.challenge.mendel.exception.TransactionNotFoundException;
 import com.challenge.mendel.exception.ValidationException;
 import com.challenge.mendel.service.TransactionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -243,6 +244,53 @@ class TransactionControllerTest {
             mockMvc.perform(put("/transactions/1")
                             .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /transactions/sum/{transactionId} - Happy Path Tests")
+    class SumHappyPathTests {
+
+        @Test
+        @DisplayName("should return 200 OK with sum for valid transaction")
+        void getTransactionSum_ValidId_ReturnsOk() throws Exception {
+            when(transactionService.getTransactionSum(10L)).thenReturn(20000.0);
+
+            mockMvc.perform(get("/transactions/sum/10"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.sum").value(20000.0));
+
+            verify(transactionService).getTransactionSum(10L);
+        }
+
+        @Test
+        @DisplayName("should return 200 OK with sum when transaction has no children")
+        void getTransactionSum_NoChildren_ReturnsCorrectSum() throws Exception {
+            when(transactionService.getTransactionSum(5L)).thenReturn(5000.0);
+
+            mockMvc.perform(get("/transactions/sum/5"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.sum").value(5000.0));
+
+            verify(transactionService).getTransactionSum(5L);
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /transactions/sum/{transactionId} - Error Response Tests")
+    class SumErrorResponseTests {
+
+        @Test
+        @DisplayName("should return 404 when transaction does not exist")
+        void getTransactionSum_NotFound_ReturnsNotFound() throws Exception {
+            when(transactionService.getTransactionSum(999L))
+                    .thenThrow(new TransactionNotFoundException(999L));
+
+            mockMvc.perform(get("/transactions/sum/999"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error").value("Transaction with id 999 not found"));
+
+            verify(transactionService).getTransactionSum(999L);
         }
     }
 }

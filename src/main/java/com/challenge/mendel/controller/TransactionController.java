@@ -1,5 +1,6 @@
 package com.challenge.mendel.controller;
 
+import com.challenge.mendel.dto.SumTransactionResponse;
 import com.challenge.mendel.dto.TransactionResponse;
 import com.challenge.mendel.dto.UpdateTransactionRequest;
 import com.challenge.mendel.exception.ValidationException;
@@ -40,5 +41,11 @@ public class TransactionController {
     public ResponseEntity<List<Long>> getTransactionsByType(@PathVariable String type) {
         List<Long> transactionIds = transactionService.getTransactionIdsByType(type);
         return ResponseEntity.ok(transactionIds);
+    }
+
+    @GetMapping("/transactions/sum/{transactionId}")
+    public ResponseEntity<SumTransactionResponse> getTransactionSum(@PathVariable Long transactionId) {
+        Double sum = transactionService.getTransactionSum(transactionId);
+        return ResponseEntity.ok(new SumTransactionResponse(sum));
     }
 }

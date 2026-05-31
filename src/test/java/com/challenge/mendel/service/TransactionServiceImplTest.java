@@ -254,4 +254,63 @@ class TransactionServiceImplTest {
             assertTrue(result.isEmpty());
         }
     }
+
+    @Nested
+    @DisplayName("getChildrenIdsByParentId() - Happy Path Tests")
+    class GetChildrenIdsByParentIdHappyPathTests {
+
+        @Test
+        @DisplayName("should return child ids when parent has children")
+        void getChildrenIdsByParentId_HasChildren_ReturnsChildIds() {
+            when(repository.findChildrenIdsByParentId(10L)).thenReturn(List.of(11L, 12L));
+
+            List<Long> result = service.getChildrenIdsByParentId(10L);
+
+            assertEquals(List.of(11L, 12L), result);
+        }
+
+        @Test
+        @DisplayName("should return empty list when parent has no children")
+        void getChildrenIdsByParentId_NoChildren_ReturnsEmptyList() {
+            when(repository.findChildrenIdsByParentId(10L)).thenReturn(List.of());
+
+            List<Long> result = service.getChildrenIdsByParentId(10L);
+
+            assertTrue(result.isEmpty());
+        }
+
+        @Test
+        @DisplayName("should return single child when parent has one child")
+        void getChildrenIdsByParentId_SingleChild_ReturnsSingleId() {
+            when(repository.findChildrenIdsByParentId(10L)).thenReturn(List.of(11L));
+
+            List<Long> result = service.getChildrenIdsByParentId(10L);
+
+            assertEquals(List.of(11L), result);
+        }
+    }
+
+    @Nested
+    @DisplayName("getChildrenIdsByParentId() - Edge Case Tests")
+    class GetChildrenIdsByParentIdEdgeCaseTests {
+
+        @Test
+        @DisplayName("should return empty list for null parent id")
+        void getChildrenIdsByParentId_NullParentId_ReturnsEmptyList() {
+            List<Long> result = service.getChildrenIdsByParentId(null);
+
+            assertTrue(result.isEmpty());
+            verify(repository, never()).findChildrenIdsByParentId(any());
+        }
+
+        @Test
+        @DisplayName("should return empty list when parent does not exist")
+        void getChildrenIdsByParentId_ParentNotExists_ReturnsEmptyList() {
+            when(repository.findChildrenIdsByParentId(999L)).thenReturn(List.of());
+
+            List<Long> result = service.getChildrenIdsByParentId(999L);
+
+            assertTrue(result.isEmpty());
+        }
+    }
 }

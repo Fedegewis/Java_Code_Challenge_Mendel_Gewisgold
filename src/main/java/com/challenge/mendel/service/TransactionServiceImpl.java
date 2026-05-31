@@ -69,4 +69,12 @@ public class TransactionServiceImpl implements TransactionService {
                 .map(Transaction::getId)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<Long> getChildrenIdsByParentId(Long parentId) {
+        if (parentId == null) {
+            return List.of();
+        }
+        return repository.findChildrenIdsByParentId(parentId);
+    }
 }

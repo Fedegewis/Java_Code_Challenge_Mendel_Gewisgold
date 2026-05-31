@@ -289,4 +289,127 @@ class InMemoryTransactionRepositoryTest {
             assertEquals(2, debitResult.size());
         }
     }
+
+    @Nested
+    @DisplayName("findChildrenIdsByParentId() tests")
+    class FindChildrenIdsByParentIdTests {
+
+        @Test
+        @DisplayName("should return empty list when parent has no children")
+        void findChildrenIdsByParentId_NoChildren_ReturnsEmptyList() {
+            repository.save(new Transaction(1L, 100.0, "CREDIT", null));
+
+            List<Long> result = repository.findChildrenIdsByParentId(1L);
+
+            assertNotNull(result);
+            assertTrue(result.isEmpty());
+        }
+
+        @Test
+        @DisplayName("should return child ids when parent has children")
+        void findChildrenIdsByParentId_HasChildren_ReturnsChildIds() {
+            repository.save(new Transaction(1L, 100.0, "CREDIT", null));
+            repository.save(new Transaction(2L, 200.0, "DEBIT", 1L));
+            repository.save(new Transaction(3L, 300.0, "CREDIT", 1L));
+
+            List<Long> result = repository.findChildrenIdsByParentId(1L);
+
+            assertEquals(2, result.size());
+            assertTrue(result.contains(2L));
+            assertTrue(result.contains(3L));
+        }
+
+        @Test
+        @DisplayName("should return empty list when parent does not exist")
+        void findChildrenIdsByParentId_ParentNotExists_ReturnsEmptyList() {
+            repository.save(new Transaction(1L, 100.0, "CREDIT", null));
+
+            List<Long> result = repository.findChildrenIdsByParentId(999L);
+
+            assertNotNull(result);
+            assertTrue(result.isEmpty());
+        }
+
+        @Test
+        @DisplayName("should return empty list for null parent id")
+        void findChildrenIdsByParentId_NullParentId_ReturnsEmptyList() {
+            repository.save(new Transaction(1L, 100.0, "CREDIT", null));
+
+            List<Long> result = repository.findChildrenIdsByParentId(null);
+
+            assertNotNull(result);
+            assertTrue(result.isEmpty());
+        }
+
+        @Test
+        @DisplayName("should return empty list when repository is empty")
+        void findChildrenIdsByParentId_EmptyRepository_ReturnsEmptyList() {
+            List<Long> result = repository.findChildrenIdsByParentId(1L);
+
+            assertNotNull(result);
+            assertTrue(result.isEmpty());
+        }
+
+        @Test
+        @DisplayName("should return new list instance (not modifying original)")
+        void findChildrenIdsByParentId_ReturnsNewListInstance() {
+            repository.save(new Transaction(1L, 100.0, "CREDIT", null));
+            repository.save(new Transaction(2L, 200.0, "DEBIT", 1L));
+
+            List<Long> result1 = repository.findChildrenIdsByParentId(1L);
+            List<Long> result2 = repository.findChildrenIdsByParentId(1L);
+
+            assertNotSame(result1, result2);
+        }
+
+        @Test
+        @DisplayName("should update index when child parent_id changes")
+        void findChildrenIdsByParentId_ChildParentChanged_UpdatesIndex() {
+            repository.save(new Transaction(1L, 100.0, "CREDIT", null));
+            repository.save(new Transaction(2L, 200.0, "DEBIT", 1L));
+
+            repository.save(new Transaction(2L, 200.0, "DEBIT", 3L));
+
+            List<Long> result1 = repository.findChildrenIdsByParentId(1L);
+            List<Long> result3 = repository.findChildrenIdsByParentId(3L);
+
+            assertTrue(result1.isEmpty());
+            assertEquals(1, result3.size());
+            assertTrue(result3.contains(2L));
+        }
+
+        @Test
+        @DisplayName("should remove child from old parent when overwritten")
+        void findChildrenIdsByParentId_ChildOverwritten_RemovedFromOldParent() {
+            repository.save(new Transaction(1L, 100.0, "CREDIT", null));
+            repository.save(new Transaction(2L, 200.0, "DEBIT", 1L));
+            repository.save(new Transaction(3L, 300.0, "CREDIT", 1L));
+
+            repository.save(new Transaction(3L, 300.0, "CREDIT", 2L));
+
+            List<Long> result1 = repository.findChildrenIdsByParentId(1L);
+            List<Long> result2 = repository.findChildrenIdsByParentId(2L);
+
+            assertEquals(1, result1.size());
+            assertEquals(1, result2.size());
+            assertTrue(result1.contains(2L));
+            assertTrue(result2.contains(3L));
+        }
+
+        @Test
+        @DisplayName("should maintain multiple levels of parent-child relationships")
+        void findChildrenIdsByParentId_ChainHierarchy_WorksCorrectly() {
+            repository.save(new Transaction(10L, 1000.0, "CREDIT", null));
+            repository.save(new Transaction(11L, 100.0, "DEBIT", 10L));
+            repository.save(new Transaction(12L, 200.0, "DEBIT", 11L));
+
+            List<Long> childrenOf10 = repository.findChildrenIdsByParentId(10L);
+            List<Long> childrenOf11 = repository.findChildrenIdsByParentId(11L);
+
+            assertEquals(1, childrenOf10.size());
+            assertTrue(childrenOf10.contains(11L));
+            assertEquals(1, childrenOf11.size());
+            assertTrue(childrenOf11.contains(12L));
+        }
+    }
 }

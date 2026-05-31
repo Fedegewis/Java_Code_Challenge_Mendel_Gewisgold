@@ -8,4 +8,6 @@ public interface TransactionService {
     void upsertTransaction(Long transactionId, UpdateTransactionRequest request);
 
     List<Long> getTransactionIdsByType(String type);
+
+    List<Long> getChildrenIdsByParentId(Long parentId);
 }

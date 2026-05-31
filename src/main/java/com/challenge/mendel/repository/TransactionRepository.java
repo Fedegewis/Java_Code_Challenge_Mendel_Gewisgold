@@ -14,4 +14,6 @@ public interface TransactionRepository {
     boolean existsById(Long id);
 
     List<Transaction> findByType(String type);
+
+    List<Long> findChildrenIdsByParentId(Long parentId);
 }

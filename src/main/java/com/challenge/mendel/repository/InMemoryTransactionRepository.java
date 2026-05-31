@@ -13,15 +13,18 @@ public class InMemoryTransactionRepository implements TransactionRepository {
 
     private final Map<Long, Transaction> transactions = new ConcurrentHashMap<>();
     private final Map<String, List<Transaction>> transactionsByType = new ConcurrentHashMap<>();
+    private final Map<Long, List<Long>> parentToChildren = new ConcurrentHashMap<>();
 
     @Override
     public void save(Transaction transaction) {
         if (transactions.containsKey(transaction.getId())) {
             Transaction existing = transactions.get(transaction.getId());
             removeFromTypeIndex(existing);
+            removeFromParentChildIndex(existing);
         }
         transactions.put(transaction.getId(), transaction);
         addToTypeIndex(transaction);
+        addToParentChildIndex(transaction);
     }
 
     @Override
@@ -63,6 +66,31 @@ public class InMemoryTransactionRepository implements TransactionRepository {
         List<Transaction> list = transactionsByType.get(transaction.getType());
         if (list != null) {
             list.remove(transaction);
+        }
+    }
+
+    @Override
+    public List<Long> findChildrenIdsByParentId(Long parentId) {
+        if (parentId == null) {
+            return List.of();
+        }
+        List<Long> children = parentToChildren.get(parentId);
+        return children != null ? new ArrayList<>(children) : List.of();
+    }
+
+    private void addToParentChildIndex(Transaction transaction) {
+        if (transaction.getParentId() != null) {
+            parentToChildren.computeIfAbsent(transaction.getParentId(), k -> new ArrayList<>())
+                    .add(transaction.getId());
+        }
+    }
+
+    private void removeFromParentChildIndex(Transaction transaction) {
+        if (transaction.getParentId() != null) {
+            List<Long> children = parentToChildren.get(transaction.getParentId());
+            if (children != null) {
+                children.remove(transaction.getId());
+            }
         }
     }
 }

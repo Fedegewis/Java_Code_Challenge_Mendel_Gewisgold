@@ -2,6 +2,7 @@ package com.challenge.mendel.controller;
 
 import com.challenge.mendel.dto.UpdateTransactionRequest;
 import com.challenge.mendel.exception.GlobalExceptionHandler;
+import com.challenge.mendel.exception.InvalidParentTransactionException;
 import com.challenge.mendel.exception.ParentTransactionNotFoundException;
 import com.challenge.mendel.exception.TransactionNotFoundException;
 import com.challenge.mendel.exception.ValidationException;
@@ -122,7 +123,7 @@ class TransactionControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Parent transaction with id 999 not found"));
+                    .andExpect(jsonPath("$.message").value("Parent transaction with id 999 not found"));
         }
 
         @Test
@@ -136,7 +137,7 @@ class TransactionControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonRequest))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Amount is required"));
+                    .andExpect(jsonPath("$.message").value("Amount is required"));
         }
 
         @Test
@@ -150,7 +151,7 @@ class TransactionControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonRequest))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Type is required"));
+                    .andExpect(jsonPath("$.message").value("Type is required"));
         }
 
         @Test
@@ -164,7 +165,7 @@ class TransactionControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonRequest))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Parent transaction with id 999 not found"));
+                    .andExpect(jsonPath("$.message").value("Parent transaction with id 999 not found"));
 
             verify(transactionService).upsertTransaction(eq(11L), any(UpdateTransactionRequest.class));
         }
@@ -180,7 +181,7 @@ class TransactionControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonRequest))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Amount must be greater than zero"));
+                    .andExpect(jsonPath("$.message").value("Amount must be greater than zero"));
         }
 
         @Test
@@ -194,7 +195,7 @@ class TransactionControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonRequest))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Amount must be greater than zero"));
+                    .andExpect(jsonPath("$.message").value("Amount must be greater than zero"));
         }
 
         @Test
@@ -208,21 +209,21 @@ class TransactionControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonRequest))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Type is required"));
+                    .andExpect(jsonPath("$.message").value("Type is required"));
         }
 
         @Test
         @DisplayName("should return 400 when parent_id equals transactionId")
         void upsertTransaction_SelfParent_ReturnsBadRequest() throws Exception {
             String jsonRequest = "{\"amount\":100,\"type\":\"cars\",\"parent_id\":5}";
-            doThrow(new ValidationException("Transaction cannot be its own parent"))
+            doThrow(new InvalidParentTransactionException("Transaction cannot be its own parent"))
                     .when(transactionService).upsertTransaction(eq(5L), any(UpdateTransactionRequest.class));
 
             mockMvc.perform(put("/transactions/5")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonRequest))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Transaction cannot be its own parent"));
+                    .andExpect(jsonPath("$.message").value("Transaction cannot be its own parent"));
 
             verify(transactionService).upsertTransaction(eq(5L), any(UpdateTransactionRequest.class));
         }
@@ -288,7 +289,7 @@ class TransactionControllerTest {
 
             mockMvc.perform(get("/transactions/sum/999"))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.error").value("Transaction with id 999 not found"));
+                    .andExpect(jsonPath("$.message").value("Transaction with id 999 not found"));
 
             verify(transactionService).getTransactionSum(999L);
         }

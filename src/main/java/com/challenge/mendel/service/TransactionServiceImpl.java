@@ -2,6 +2,8 @@ package com.challenge.mendel.service;
 
 import com.challenge.mendel.domain.Transaction;
 import com.challenge.mendel.dto.UpdateTransactionRequest;
+import com.challenge.mendel.exception.InvalidParentTransactionException;
+import com.challenge.mendel.exception.InvalidTransactionRequestException;
 import com.challenge.mendel.exception.ParentTransactionNotFoundException;
 import com.challenge.mendel.exception.TransactionNotFoundException;
 import com.challenge.mendel.exception.ValidationException;
@@ -25,7 +27,7 @@ public class TransactionServiceImpl implements TransactionService {
         validateRequest(transactionId, request);
 
         if (request.getParentId() != null && request.getParentId().equals(transactionId)) {
-            throw new ValidationException("Transaction cannot be its own parent");
+            throw new InvalidParentTransactionException("Transaction cannot be its own parent");
         }
 
         if (request.getParentId() != null && !repository.existsById(request.getParentId())) {

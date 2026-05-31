@@ -71,7 +71,7 @@ class TransactionControllerIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonRequest))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Parent transaction with id 999 not found"));
+                    .andExpect(jsonPath("$.message").value("Parent transaction with id 999 not found"));
         }
 
         @Test
@@ -82,7 +82,7 @@ class TransactionControllerIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonRequest))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Amount must be greater than zero"));
+                    .andExpect(jsonPath("$.message").value("Amount must be greater than zero"));
         }
 
         @Test
@@ -93,7 +93,7 @@ class TransactionControllerIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonRequest))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Amount must be greater than zero"));
+                    .andExpect(jsonPath("$.message").value("Amount must be greater than zero"));
         }
 
         @Test
@@ -104,7 +104,7 @@ class TransactionControllerIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonRequest))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Amount is required"));
+                    .andExpect(jsonPath("$.message").value("Amount is required"));
         }
 
         @Test
@@ -115,7 +115,7 @@ class TransactionControllerIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonRequest))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Type is required"));
+                    .andExpect(jsonPath("$.message").value("Type is required"));
         }
 
         @Test
@@ -126,7 +126,7 @@ class TransactionControllerIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonRequest))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Type is required"));
+                    .andExpect(jsonPath("$.message").value("Type is required"));
         }
 
         @Test
@@ -137,7 +137,7 @@ class TransactionControllerIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(jsonRequest))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Transaction cannot be its own parent"));
+                    .andExpect(jsonPath("$.message").value("Transaction cannot be its own parent"));
         }
 
         @Test

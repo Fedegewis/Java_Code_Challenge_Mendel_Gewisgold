@@ -2,6 +2,7 @@ package com.challenge.mendel.service;
 
 import com.challenge.mendel.domain.Transaction;
 import com.challenge.mendel.dto.UpdateTransactionRequest;
+import com.challenge.mendel.exception.InvalidParentTransactionException;
 import com.challenge.mendel.exception.ParentTransactionNotFoundException;
 import com.challenge.mendel.exception.TransactionNotFoundException;
 import com.challenge.mendel.exception.ValidationException;
@@ -144,10 +145,10 @@ class TransactionServiceImplTest {
 
         @Test
         @DisplayName("should throw exception when parent_id equals transactionId (self-parent)")
-        void upsertTransaction_SelfParent_ThrowsValidationException() {
+        void upsertTransaction_SelfParent_ThrowsInvalidParentException() {
             UpdateTransactionRequest request = new UpdateTransactionRequest(100.0, "cars", 5L);
 
-            ValidationException exception = assertThrows(ValidationException.class,
+            InvalidParentTransactionException exception = assertThrows(InvalidParentTransactionException.class,
                     () -> service.upsertTransaction(5L, request));
 
             assertEquals("Transaction cannot be its own parent", exception.getMessage());

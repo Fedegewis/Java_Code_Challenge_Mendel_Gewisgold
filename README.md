@@ -1,10 +1,10 @@
-# Mendel Transaction Service
+# Transaction Service
 
 A RESTful transaction management service built with Spring Boot that provides in-memory storage for transactions with parent-child relationships and transitive sum calculations.
 
 ## Project Description
 
-Mendel Transaction Service is a lightweight REST API designed to manage financial transactions with hierarchical (parent-child) relationships. It allows creating transactions, querying transactions by type, and calculating the transitive sum of a transaction and all its descendants.
+Transaction Service is a lightweight REST API designed to manage financial transactions with hierarchical (parent-child) relationships. It allows creating transactions, querying transactions by type, and calculating the transitive sum of a transaction and all its descendants.
 
 **Note:** Java 21 is used, which satisfies the Java 11+ requirement of the challenge.
 

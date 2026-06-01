@@ -184,6 +184,65 @@ class TransactionServiceImplTest {
             verify(repository, never()).existsById(any());
             verify(repository).save(any(Transaction.class));
         }
+
+        @Test
+        @DisplayName("should throw exception when parent_id would create indirect cycle")
+        void upsertTransaction_IndirectCycle_ThrowsInvalidParentException() {
+            UpdateTransactionRequest request = new UpdateTransactionRequest(100.0, "cars", 2L);
+
+            Transaction existingTransaction = new Transaction(1L, 100.0, "cars", null);
+            when(repository.findById(2L)).thenReturn(new Transaction(2L, 100.0, "cars", 1L));
+
+            InvalidParentTransactionException exception = assertThrows(
+                    InvalidParentTransactionException.class,
+                    () -> service.upsertTransaction(1L, request));
+
+            assertEquals("Setting this parent would create a cycle", exception.getMessage());
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw exception when parent_id would create deep cycle")
+        void upsertTransaction_DeepCycle_ThrowsInvalidParentException() {
+            UpdateTransactionRequest request = new UpdateTransactionRequest(100.0, "cars", 3L);
+
+            when(repository.findById(3L)).thenReturn(new Transaction(3L, 100.0, "cars", 2L));
+            when(repository.findById(2L)).thenReturn(new Transaction(2L, 100.0, "cars", 1L));
+
+            InvalidParentTransactionException exception = assertThrows(
+                    InvalidParentTransactionException.class,
+                    () -> service.upsertTransaction(1L, request));
+
+            assertEquals("Setting this parent would create a cycle", exception.getMessage());
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should allow valid parent chain without cycle")
+        void upsertTransaction_ValidParentChain_Success() {
+            UpdateTransactionRequest request = new UpdateTransactionRequest(100.0, "cars", 5L);
+
+            when(repository.findById(5L)).thenReturn(new Transaction(5L, 100.0, "cars", 4L));
+            when(repository.existsById(5L)).thenReturn(true);
+
+            service.upsertTransaction(1L, request);
+
+            verify(repository).save(any(Transaction.class));
+        }
+
+        @Test
+        @DisplayName("should not modify repository when cycle is detected")
+        void upsertTransaction_CycleDetected_DoesNotModifyRepository() {
+            Transaction existingTransaction = new Transaction(1L, 100.0, "cars", null);
+            when(repository.findById(2L)).thenReturn(new Transaction(2L, 100.0, "cars", 1L));
+
+            UpdateTransactionRequest request = new UpdateTransactionRequest(100.0, "cars", 2L);
+
+            assertThrows(InvalidParentTransactionException.class,
+                    () -> service.upsertTransaction(1L, request));
+
+            verify(repository, never()).save(any());
+        }
     }
 
     @Nested

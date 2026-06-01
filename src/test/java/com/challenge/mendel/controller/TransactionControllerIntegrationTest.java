@@ -141,6 +141,20 @@ class TransactionControllerIntegrationTest {
         }
 
         @Test
+        void upsertTransaction_IndirectCycle_ReturnsBadRequest() throws Exception {
+            transactionService.upsertTransaction(1L, new UpdateTransactionRequest(100.0, "cars", null));
+            transactionService.upsertTransaction(2L, new UpdateTransactionRequest(200.0, "cars", 1L));
+
+            String jsonRequest = "{\"amount\":300,\"type\":\"cars\",\"parent_id\":2}";
+
+            mockMvc.perform(put("/transactions/1")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(jsonRequest))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("Setting this parent would create a cycle"));
+        }
+
+        @Test
         void upsertTransaction_MalformedJson_ReturnsBadRequest() throws Exception {
             String malformedJson = "{\"amount\":100,\"type\":";
 

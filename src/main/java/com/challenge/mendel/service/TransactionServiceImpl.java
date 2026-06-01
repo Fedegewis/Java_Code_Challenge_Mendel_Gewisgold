@@ -30,6 +30,10 @@ public class TransactionServiceImpl implements TransactionService {
             throw new InvalidParentTransactionException("Transaction cannot be its own parent");
         }
 
+        if (request.getParentId() != null && wouldCreateCycle(transactionId, request.getParentId())) {
+            throw new InvalidParentTransactionException("Setting this parent would create a cycle");
+        }
+
         if (request.getParentId() != null && !repository.existsById(request.getParentId())) {
             throw new ParentTransactionNotFoundException(request.getParentId());
         }
@@ -42,6 +46,18 @@ public class TransactionServiceImpl implements TransactionService {
         );
 
         repository.save(transaction);
+    }
+
+    private boolean wouldCreateCycle(Long transactionId, Long parentId) {
+        Long current = parentId;
+        while (current != null) {
+            if (current.equals(transactionId)) {
+                return true;
+            }
+            Transaction currentTransaction = repository.findById(current);
+            current = currentTransaction != null ? currentTransaction.getParentId() : null;
+        }
+        return false;
     }
 
     private void validateRequest(Long transactionId, UpdateTransactionRequest request) {

@@ -30,6 +30,23 @@ class TransactionControllerIntegrationTest {
     private InMemoryTransactionRepository transactionRepository;
 
     @Nested
+    @DisplayName("GET / - Root Endpoint Tests")
+    class RootEndpointTests {
+
+        @BeforeEach
+        void setUp() {
+            transactionRepository.clear();
+        }
+
+        @Test
+        void getRoot_ReturnsOk() throws Exception {
+            mockMvc.perform(get("/"))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string("Mendel Transaction Service is running. Use /health for health check."));
+        }
+    }
+
+    @Nested
     @DisplayName("PUT /transactions/{transactionId} - Integration Tests")
     class IntegrationTests {
 

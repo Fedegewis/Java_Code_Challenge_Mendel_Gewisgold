@@ -190,7 +190,6 @@ class TransactionServiceImplTest {
         void upsertTransaction_IndirectCycle_ThrowsInvalidParentException() {
             UpdateTransactionRequest request = new UpdateTransactionRequest(100.0, "cars", 2L);
 
-            Transaction existingTransaction = new Transaction(1L, 100.0, "cars", null);
             when(repository.findById(2L)).thenReturn(new Transaction(2L, 100.0, "cars", 1L));
 
             InvalidParentTransactionException exception = assertThrows(
@@ -233,7 +232,6 @@ class TransactionServiceImplTest {
         @Test
         @DisplayName("should not modify repository when cycle is detected")
         void upsertTransaction_CycleDetected_DoesNotModifyRepository() {
-            Transaction existingTransaction = new Transaction(1L, 100.0, "cars", null);
             when(repository.findById(2L)).thenReturn(new Transaction(2L, 100.0, "cars", 1L));
 
             UpdateTransactionRequest request = new UpdateTransactionRequest(100.0, "cars", 2L);

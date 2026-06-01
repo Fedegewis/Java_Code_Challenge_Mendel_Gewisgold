@@ -6,13 +6,7 @@ A RESTful transaction management service built with Spring Boot that provides in
 
 Mendel Transaction Service is a lightweight REST API designed to manage financial transactions with hierarchical (parent-child) relationships. It allows creating transactions, querying transactions by type, and calculating the transitive sum of a transaction and all its descendants.
 
-### Key Features
-
-- **Transaction Management**: Create and update transactions with amount, type, and optional parent reference
-- **Type-based Query**: Retrieve all transaction IDs matching a specific type
-- **Transitive Sum Calculation**: Calculate the sum of a transaction plus all its child transactions recursively
-- **In-Memory Storage**: Fast, thread-safe storage using ConcurrentHashMap
-- **RESTful API**: Clean HTTP interface with proper status codes and JSON responses
+**Note:** Java 21 is used, which satisfies the Java 11+ requirement of the challenge.
 
 ## Tech Stack
 
@@ -26,7 +20,7 @@ Mendel Transaction Service is a lightweight REST API designed to manage financia
 
 ## Requirements
 
-- **Java 21** or higher
+- **Java 21** or higher (satisfies Java 11+ requirement)
 - **Maven 3.6+** (for local development)
 - **Docker & Docker Compose** (for containerized deployment)
 
@@ -35,33 +29,32 @@ Mendel Transaction Service is a lightweight REST API designed to manage financia
 ### High-Level Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Client Application                       │
-└─────────────────────────────┬───────────────────────────────┘
-                              │ HTTP/REST
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   TransactionController                      │
-│  - Handles HTTP requests                                    │
-│  - Validates request format                                 │
-│  - Returns appropriate HTTP responses                       │
-└─────────────────────────────┬───────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   TransactionServiceImpl                     │
-│  - Business logic                                           │
-│  - Transaction validation                                   │
-│  - Sum calculation (recursive)                              │
-└─────────────────────────────┬───────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│               InMemoryTransactionRepository                  │
-│  - Thread-safe data storage                                 │
-│  - O(1) lookups by ID                                       │
-│  - Indexed queries by type                                  │
-└─────────────────────────────────────────────────────────────┘
++-----------------------------------------------------+
+|                   Client Application                 |
++----------------------------+-------------------------+
+                             | HTTP/REST
+                             v
++-----------------------------------------------------+
+|              TransactionController                   |
+|  - Handles HTTP request mapping                     |
+|  - Basic request body handling                       |
++----------------------------+-------------------------+
+                             |
+                             v
++-----------------------------------------------------+
+|              TransactionServiceImpl                  |
+|  - Business logic                                    |
+|  - Field validation (amount, type, parent_id)       |
+|  - Sum calculation (recursive)                     |
++----------------------------+-------------------------+
+                             |
+                             v
++-----------------------------------------------------+
+|           InMemoryTransactionRepository             |
+|  - ConcurrentHashMap for transaction storage        |
+|  - O(1) lookups by ID                               |
+|  - Indexed queries by type                          |
++-----------------------------------------------------+
 ```
 
 ### Data Model
@@ -77,13 +70,19 @@ Transaction {
 
 ### Storage Design
 
-The repository uses three ConcurrentHashMap structures for efficient access:
+The repository uses ConcurrentHashMap for thread-safe storage:
 
 | Map | Type | Purpose |
 |-----|------|---------|
-| `transactions` | `Map<Long, Transaction>` | O(1) lookup by transaction ID |
-| `transactionsByType` | `Map<String, List<Transaction>>` | O(1) lookup by type |
-| `parentToChildren` | `Map<Long, List<Long>>` | O(1) lookup of children by parent ID |
+| `transactions` | `ConcurrentHashMap<Long, Transaction>` | O(1) lookup by ID |
+| `transactionsByType` | `ConcurrentHashMap<String, List<Transaction>>` | O(1) lookup by type |
+| `parentToChildren` | `ConcurrentHashMap<Long, List<Long>>` | O(1) lookup of children |
+
+**Note:** The maps themselves are thread-safe, but the List values stored within are mutable. The repository handles synchronization internally.
+
+### Validation
+
+Field validation (amount > 0, type not blank, parent existence, cycle detection) is performed in the `TransactionServiceImpl` layer. The controller handles HTTP request mapping and basic request body deserialization.
 
 ### Transitive Sum Algorithm
 
@@ -102,7 +101,18 @@ calculateSum(transaction):
 
 ## API Endpoints
 
-### 1. Create/Update Transaction
+### 1. Root Endpoint
+
+**GET** `/`
+
+Returns a welcome message.
+
+**Response:**
+```
+Mendel Transaction Service is running. Use /health for health check.
+```
+
+### 2. Create/Update Transaction
 
 **PUT** `/transactions/{transactionId}`
 
@@ -128,9 +138,9 @@ Creates or updates a transaction with the specified ID.
 | Status | Description | Example |
 |--------|-------------|---------|
 | 200 OK | Transaction created/updated successfully | `{"status": "ok"}` |
-| 400 Bad Request | Validation error | `{"message": "Amount must be greater than zero"}` |
+| 400 Bad Request | Validation error | See Error Response format |
 
-### 2. Get Transactions by Type
+### 3. Get Transactions by Type
 
 **GET** `/transactions/types/{type}`
 
@@ -143,7 +153,7 @@ Returns all transaction IDs matching the specified type.
 | 200 OK | List of matching transaction IDs | `[1, 2, 3]` |
 | 200 OK | No matches (empty array) | `[]` |
 
-### 3. Get Transaction Sum
+### 4. Get Transaction Sum
 
 **GET** `/transactions/sum/{transactionId}`
 
@@ -154,9 +164,9 @@ Returns the sum of the transaction plus all its descendants.
 | Status | Description | Example |
 |--------|-------------|---------|
 | 200 OK | Transitive sum calculated | `{"sum": 15000.0}` |
-| 404 Not Found | Transaction does not exist | `{"message": "Transaction with id 999 not found"}` |
+| 404 Not Found | Transaction does not exist | See Error Response format |
 
-### 4. Health Check
+### 5. Health Check
 
 **GET** `/health`
 
@@ -167,7 +177,49 @@ Returns service health status.
 OK
 ```
 
+## Error Response Format
+
+All error responses follow this format:
+
+```json
+{
+    "status": 400,
+    "message": "Amount must be greater than zero",
+    "timestamp": "2024-01-15T10:30:00"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status | int | HTTP status code |
+| message | String | Human-readable error message |
+| timestamp | String | ISO-8601 formatted datetime |
+
+## Error Handling
+
+| Error Condition | HTTP Status | Error Message |
+|----------------|-------------|---------------|
+| Amount is null | 400 | "Amount is required" |
+| Amount <= 0 | 400 | "Amount must be greater than zero" |
+| Type is null or blank | 400 | "Type is required" |
+| Parent ID references non-existent transaction | 400 | "Parent transaction with id {id} not found" |
+| Transaction cannot be its own parent | 400 | "Transaction cannot be its own parent" |
+| Setting parent would create cycle | 400 | "Setting this parent would create a cycle" |
+| Malformed JSON | 400 | "Invalid request body" |
+| Transaction not found (sum) | 404 | "Transaction with id {id} not found" |
+
 ## Request/Response Examples
+
+### Root Endpoint
+
+```bash
+curl http://localhost:8080/
+```
+
+**Response:**
+```
+Mendel Transaction Service is running. Use /health for health check.
+```
 
 ### Create a Parent Transaction
 
@@ -240,7 +292,7 @@ curl -X PUT http://localhost:8080/transactions/10 \
 
 **Response (400 Bad Request):**
 ```json
-{"message": "Parent transaction with id 999 not found"}
+{"status": 400, "message": "Parent transaction with id 999 not found", "timestamp": "2024-01-15T10:30:00"}
 ```
 
 ### Error: Self-Reference Parent
@@ -253,7 +305,7 @@ curl -X PUT http://localhost:8080/transactions/5 \
 
 **Response (400 Bad Request):**
 ```json
-{"message": "Transaction cannot be its own parent"}
+{"status": 400, "message": "Transaction cannot be its own parent", "timestamp": "2024-01-15T10:30:00"}
 ```
 
 ### Error: Missing Transaction
@@ -264,7 +316,7 @@ curl http://localhost:8080/transactions/sum/999
 
 **Response (404 Not Found):**
 ```json
-{"message": "Transaction with id 999 not found"}
+{"status": 404, "message": "Transaction with id 999 not found", "timestamp": "2024-01-15T10:30:00"}
 ```
 
 ## How to Run Locally
@@ -316,18 +368,6 @@ mvn test
    docker compose down
    ```
 
-### Container Health Check
-
-The docker-compose.yml includes a health check that verifies the service is responding:
-```yaml
-healthcheck:
-  test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
-  interval: 30s
-  timeout: 10s
-  retries: 3
-  start_period: 30s
-```
-
 ## Design Decisions
 
 ### 1. In-Memory Storage
@@ -338,7 +378,6 @@ healthcheck:
 - Zero latency data access
 - No database setup required
 - Simple deployment
-- Thread-safe with ConcurrentHashMap
 
 **Trade-offs:**
 - Data is lost when the service restarts
@@ -350,7 +389,7 @@ healthcheck:
 
 **Structure:**
 ```java
-Map<Long, List<Long>> parentToChildren  // parentId -> List<childIds>
+ConcurrentHashMap<Long, List<Long>> parentToChildren  // parentId -> List<childIds>
 ```
 
 **Benefits:**
@@ -363,9 +402,11 @@ Map<Long, List<Long>> parentToChildren  // parentId -> List<childIds>
 **Why:** The service may handle concurrent requests in a production environment.
 
 **Benefits:**
-- Thread-safe without external synchronization
+- Concurrent reads and writes are safe without external synchronization
 - High performance under concurrent access
-- Supports concurrent reads and writes
+- Repository operations are atomic at the map level
+
+**Note:** While the maps are thread-safe, the List values stored within are mutable. The repository uses proper synchronization to maintain consistency.
 
 ### 4. Transitive Sum Calculation
 
@@ -397,63 +438,51 @@ wouldCreateCycle(transactionId, parentId):
     return false
 ```
 
-## Error Handling
-
-| Error Condition | HTTP Status | Error Message |
-|----------------|-------------|---------------|
-| Amount is null | 400 | "Amount is required" |
-| Amount <= 0 | 400 | "Amount must be greater than zero" |
-| Type is null or blank | 400 | "Type is required" |
-| Parent ID references non-existent transaction | 400 | "Parent transaction with id {id} not found" |
-| Transaction cannot be its own parent | 400 | "Transaction cannot be its own parent" |
-| Setting parent would create cycle | 400 | "Setting this parent would create a cycle" |
-| Transaction not found (sum) | 404 | "Transaction with id {id} not found" |
-| Malformed JSON | 400 | Bad Request (no body) |
-
 ## Project Structure
 
 ```
 mendel-transaction-service/
-├── src/
-│   ├── main/
-│   │   ├── java/com/challenge/mendel/
-│   │   │   ├── MendelTransactionServiceApplication.java
-│   │   │   ├── controller/
-│   │   │   │   ├── TransactionController.java
-│   │   │   │   └── HealthController.java
-│   │   │   ├── service/
-│   │   │   │   ├── TransactionService.java
-│   │   │   │   └── TransactionServiceImpl.java
-│   │   │   ├── repository/
-│   │   │   │   ├── TransactionRepository.java
-│   │   │   │   └── InMemoryTransactionRepository.java
-│   │   │   ├── domain/
-│   │   │   │   └── Transaction.java
-│   │   │   ├── dto/
-│   │   │   │   ├── UpdateTransactionRequest.java
-│   │   │   │   ├── TransactionResponse.java
-│   │   │   │   ├── SumTransactionResponse.java
-│   │   │   │   └── ErrorResponse.java
-│   │   │   └── exception/
-│   │   │       ├── GlobalExceptionHandler.java
-│   │   │       ├── TransactionNotFoundException.java
-│   │   │       ├── ParentTransactionNotFoundException.java
-│   │   │       ├── InvalidParentTransactionException.java
-│   │   │       └── ValidationException.java
-│   │   └── resources/
-│   └── test/
-│       └── java/com/challenge/mendel/
-│           ├── controller/
-│           │   ├── TransactionControllerTest.java
-│           │   └── TransactionControllerIntegrationTest.java
-│           ├── service/
-│           │   └── TransactionServiceImplTest.java
-│           └── repository/
-│               └── InMemoryTransactionRepositoryTest.java
-├── Dockerfile
-├── docker-compose.yml
-├── pom.xml
-└── README.md
+|-- src/
+|   |-- main/
+|   |   |-- java/com/challenge/mendel/
+|   |   |   |-- MendelTransactionServiceApplication.java
+|   |   |   |-- controller/
+|   |   |   |   |-- TransactionController.java
+|   |   |   |   |-- HealthController.java
+|   |   |   |-- service/
+|   |   |   |   |-- TransactionService.java
+|   |   |   |   |-- TransactionServiceImpl.java
+|   |   |   |-- repository/
+|   |   |   |   |-- TransactionRepository.java
+|   |   |   |   |-- InMemoryTransactionRepository.java
+|   |   |   |-- domain/
+|   |   |   |   |-- Transaction.java
+|   |   |   |-- dto/
+|   |   |   |   |-- UpdateTransactionRequest.java
+|   |   |   |   |-- TransactionResponse.java
+|   |   |   |   |-- SumTransactionResponse.java
+|   |   |   |   |-- ErrorResponse.java
+|   |   |   |-- exception/
+|   |   |   |   |-- GlobalExceptionHandler.java
+|   |   |   |   |-- TransactionNotFoundException.java
+|   |   |   |   |-- ParentTransactionNotFoundException.java
+|   |   |   |   |-- InvalidParentTransactionException.java
+|   |   |   |   |-- InvalidTransactionRequestException.java
+|   |   |   |   |-- ValidationException.java
+|   |   |-- resources/
+|   |-- test/
+|       |-- java/com/challenge/mendel/
+|       |   |-- controller/
+|       |   |   |-- TransactionControllerTest.java
+|       |   |   |-- TransactionControllerIntegrationTest.java
+|       |   |-- service/
+|       |   |   |-- TransactionServiceImplTest.java
+|       |   |-- repository/
+|       |   |   |-- InMemoryTransactionRepositoryTest.java
+|-- Dockerfile
+|-- docker-compose.yml
+|-- pom.xml
+|-- README.md
 ```
 
 ## License
